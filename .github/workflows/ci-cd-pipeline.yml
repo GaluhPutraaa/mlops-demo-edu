@@ -24,11 +24,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          PROJECT_ID=$(curl -sS -G "$CDSW_DOMAIN/api/v2/projects" \
-            -H "accept: application/json" \
-            -H "Authorization: Bearer $API_KEY" \
-            --data-urlencode "search_filter={\"name\":\"$PROJ_NAME\"}" \
-            | jq -r '.projects[0].id // empty')
+          PROJECT_ID=$(curl -sS -G "$CDSW_DOMAIN/api/v2/projects" -H "accept: application/json" -H "Authorization: Bearer $API_KEY" --data-urlencode "search_filter={\"name\":\"$PROJ_NAME\"}" | jq -r '.projects[0].id // empty')
 
           if [ -z "$PROJECT_ID" ]; then
             echo "::error::Project '$PROJ_NAME' tidak ketemu"
@@ -44,11 +40,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          RESPONSE=$(curl -sS -X POST "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs" \
-            -H "accept: application/json" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "{\"cpu\":2,\"memory\":4,\"name\":\"bootstrap\",\"runtime_identifier\":\"$RUN_TIME\",\"script\":\"0_bootstrap.py\"}")
+          cat > job.json <<EOF
+          {"cpu":2,"memory":4,"name":"bootstrap","runtime_identifier":"$RUN_TIME","script":"0_bootstrap.py"}
+          EOF
+
+          RESPONSE=$(curl -sS -X POST "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs" -H "accept: application/json" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -d @job.json)
 
           echo "Response: $RESPONSE"
 
@@ -60,10 +56,7 @@ jobs:
 
           echo "Job ID: $JOB_ID"
 
-          RUN=$(curl -sS -X POST "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs/$JOB_ID/runs" \
-            -H "accept: application/json" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json")
+          RUN=$(curl -sS -X POST "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs/$JOB_ID/runs" -H "accept: application/json" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json")
 
           echo "Run response: $RUN"
           echo "$RUN" | jq -e '.id' > /dev/null || { echo "::error::Gagal trigger run bootstrap"; exit 1; }
@@ -77,11 +70,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          RESPONSE=$(curl -sS -X POST "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs" \
-            -H "accept: application/json" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "{\"cpu\":2,\"memory\":4,\"name\":\"train_experiment\",\"runtime_identifier\":\"$RUN_TIME\",\"script\":\"fit.py\"}")
+          cat > job.json <<EOF
+          {"cpu":2,"memory":4,"name":"train_experiment","runtime_identifier":"$RUN_TIME","script":"fit.py"}
+          EOF
+
+          RESPONSE=$(curl -sS -X POST "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs" -H "accept: application/json" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -d @job.json)
 
           echo "Response: $RESPONSE"
 
@@ -93,10 +86,7 @@ jobs:
 
           echo "Experiment Job ID: $JOB_ID"
 
-          RUN=$(curl -sS -X POST "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs/$JOB_ID/runs" \
-            -H "accept: application/json" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json")
+          RUN=$(curl -sS -X POST "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs/$JOB_ID/runs" -H "accept: application/json" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json")
 
           echo "Run response: $RUN"
           echo "$RUN" | jq -e '.id' > /dev/null || { echo "::error::Gagal trigger run train_experiment"; exit 1; }
