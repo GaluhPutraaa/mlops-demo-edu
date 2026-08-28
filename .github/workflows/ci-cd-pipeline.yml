@@ -65,37 +65,12 @@ jobs:
             -H "Content-Type: application/json")
 
           echo "Response: $RUN"
-          echo "$RUN" | jq -e '.id' > /dev/null || { echo "::error::Gagal trigger run"; exit 1; }
 
-      - name: Wait for 30 Seconds
-        run: sleep 30
-
-      - name: Run Train Job
-        env:
-          API_KEY: ${{ secrets.CML_API_KEY }}
-          JOB_NAME: "train"
-        run: |
-          set -euo pipefail
-
-          JOBS=$(curl -sS -G "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs" \
-            -H "accept: application/json" \
-            -H "Authorization: Bearer $API_KEY" \
-            --data-urlencode "page_size=100")
-
-          JOB_ID=$(echo "$JOBS" | jq -r --arg n "$JOB_NAME" '.jobs[] | select(.name==$n) | .id' | head -n1)
-
-          if [ -z "$JOB_ID" ]; then
-            echo "::error::Job '$JOB_NAME' tidak ketemu di project"
-            echo "Jobs yang ada:"
-            echo "$JOBS" | jq -r '.jobs[].name'
+          RUN_ID=$(echo "$RUN" | jq -r '.id // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::Gagal trigger run — lihat Response di atas"
             exit 1
           fi
 
-          echo "Job ID: $JOB_ID"
-          RUN=$(curl -sS -X POST "$CDSW_DOMAIN/api/v2/projects/$PROJECT_ID/jobs/$JOB_ID/runs" \
-            -H "accept: application/json" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json")
-
-          echo "Response: $RUN"
-          echo "$RUN" | jq -e '.id' > /dev/null || { echo "::error::Gagal trigger run"; exit 1; }
+          echo "Run ID: $RUN_ID"
+          echo "Job 'train' akan jalan otomatis setelah bootstrap selesai (dependent schedule)."
